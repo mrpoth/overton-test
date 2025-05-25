@@ -13,7 +13,11 @@ use Illuminate\Support\Facades\Log;
 
 class ParserService
 {
-    public function parseLinks($pages): array
+    /**
+     * @param array<string> $pages
+     * @return array<string> $extractedLinks
+     */
+    public function parseLinks(array $pages): array
     {
         $extractedLinks = [];
 
@@ -44,6 +48,10 @@ class ParserService
         return array_unique($extractedLinks);
     }
 
+    /**
+     * @param array<string> $links
+     * @return array<string, array{}|array{title: bool|string, authors: list<mixed>}> $extractedData
+     */
     public function extractTitleAndAuthors($links): array
     {
         $linksToProcess = array_slice($links, 0, 50);
@@ -108,9 +116,9 @@ class ParserService
         return trim($normalisedUrl);
     }
 
-    private function loadDOMXPath($body): ?DOMXPath
+    private function loadDOMXPath(string $body): ?DOMXPath
     {
-        if (empty($body) || !is_string($body)) {
+        if (empty($body)) {
             return null;
         }
 
@@ -119,8 +127,9 @@ class ParserService
         return new DOMXPath($doc);
     }
 
-    private function cleanUnicodeAndTrimString(string $string): string
+    private function cleanUnicodeAndTrimString(string $string): string|bool
+
     {
-        return trim(transliterator_transliterate('Any-Latin; Latin-ASCII;', $string));
+        return transliterator_transliterate('Any-Latin; Latin-ASCII;', trim($string));
     }
 }

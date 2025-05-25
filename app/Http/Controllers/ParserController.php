@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Http;
 
 class ParserController extends Controller
 {
+    /**
+     * @return array<string, array{}|array{title: bool|string, authors: list<mixed>}> $extractedData
+     */
     public function index(ParserService $parserService): array
     {
 
