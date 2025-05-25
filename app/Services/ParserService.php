@@ -45,7 +45,7 @@ class ParserService
     {
         $links = $this->parseLinks();
 
-        $linksToProcess = array_slice($links, 0, 2);
+        $linksToProcess = array_slice($links, 0, 50);
 
         $responses = Http::pool(
             fn(Pool $pool) =>
@@ -86,8 +86,4 @@ class ParserService
         return trim($normalisedUrl);
     }
 
-    private function parseWithXPath($parser, $xpath)
-    {
-        $parser->evaluate($xpath);
-    }
 }
