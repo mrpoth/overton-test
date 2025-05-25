@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Http;
 
 class ParserController extends Controller
 {
-    public function index(ParserService $parserService)
+    public function index(ParserService $parserService): array
     {
 
-        $parserService->poolPages();
+        return $parserService->extractTitleAndAuthors();
 
     }
 }

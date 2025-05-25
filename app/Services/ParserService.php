@@ -8,6 +8,7 @@ use DOMDocument;
 use DOMXPath;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\Pool;
+use Illuminate\Support\Facades\Log;
 
 class ParserService
 {
@@ -24,12 +25,13 @@ class ParserService
 
         foreach ($this->pages as $page) {
             $response = Http::get($page);
+            if ($response->failed()) {
+                Log::error('Could not parse page: ' . $page);
+                continue;
+            }
 
             $body = $response->body();
-            $doc = new DOMDocument();
-
-            @$doc->loadHTML($body, LIBXML_NOERROR);
-            $xpathParser = new DOMXPath($doc);
+            $xpathParser = $this->loadDOMXPath($body);
 
             $links = $xpathParser->evaluate(XPaths::LINKS);
             foreach ($links as $link) {
@@ -38,10 +40,10 @@ class ParserService
             }
         }
 
-        return array_map(fn($link) => $this->normaliseUrl($link), $extractedLinks);
+        return array_unique($extractedLinks);
     }
 
-    public function poolPages(): array
+    public function extractTitleAndAuthors(): array
     {
         $links = $this->parseLinks();
 
@@ -56,9 +58,7 @@ class ParserService
 
         foreach ($responses as $index => $response) {
             $body = $response->body();
-            $doc = new DOMDocument();
-            @$doc->loadHTML($body, LIBXML_NOERROR);
-            $xpathParser = new DOMXPath($doc);
+            $xpathParser = $this->loadDOMXPath($body);
             $currentLinkProcessed = $linksToProcess[$index];
 
             $pageTitle = $xpathParser->evaluate(XPaths::TITLE);
@@ -71,7 +71,7 @@ class ParserService
             }
 
             $extractedData[$currentLinkProcessed] = [
-                'title' => $title,
+                'title' => $this->cleanUnicodeAndTrimString($title),
                 'authors' => $authorList,
             ];
         }
@@ -86,4 +86,15 @@ class ParserService
         return trim($normalisedUrl);
     }
 
+    private function loadDOMXPath($body): DOMXPath
+    {
+        $doc = new DOMDocument();
+        @$doc->loadHTML($body, LIBXML_NOERROR);
+        return new DOMXPath($doc);
+    }
+
+    private function cleanUnicodeAndTrimString(string $string): string
+    {
+        return trim(preg_replace('/\p{C}+/u', '', subject: $string));
+    }
 }
