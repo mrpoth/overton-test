@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\Links;
 use App\Services\ParserService;
 use DOMDocument;
 use DOMXPath;
@@ -20,6 +21,7 @@ class ParserController extends Controller
             'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=2',
             'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=3'
         ];
+        $pages = Links::PAGES;
         $links = $parserService->parseLinks($pages);
         return $parserService->extractTitleAndAuthors($links);
     }
