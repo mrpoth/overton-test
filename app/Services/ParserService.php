@@ -6,24 +6,18 @@ namespace App\Services;
 use App\Constants\XPaths;
 use DOMDocument;
 use DOMXPath;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Support\Facades\Log;
 
 class ParserService
 {
-
-    private array $pages = [
-        'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest',
-        'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=2',
-        'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=3',
-    ];
-    public function parseLinks(): array
+    public function parseLinks($pages): array
     {
-
         $extractedLinks = [];
 
-        foreach ($this->pages as $page) {
+        foreach ($pages as $page) {
             $response = Http::get($page);
             if ($response->failed()) {
                 Log::error('Could not parse page: ' . $page);
@@ -32,6 +26,13 @@ class ParserService
 
             $body = $response->body();
             $xpathParser = $this->loadDOMXPath($body);
+
+            if ($xpathParser === null) {
+                Log::error('Could not parse links', [
+                    'body' => $body
+                ]);
+                return [];
+            }
 
             $links = $xpathParser->evaluate(XPaths::LINKS);
             foreach ($links as $link) {
@@ -43,10 +44,8 @@ class ParserService
         return array_unique($extractedLinks);
     }
 
-    public function extractTitleAndAuthors(): array
+    public function extractTitleAndAuthors($links): array
     {
-        $links = $this->parseLinks();
-
         $linksToProcess = array_slice($links, 0, 50);
 
         $responses = Http::pool(
@@ -59,14 +58,37 @@ class ParserService
         foreach ($responses as $index => $response) {
             $body = $response->body();
             $xpathParser = $this->loadDOMXPath($body);
+
+            if ($xpathParser === null) {
+                Log::error('Could not parse links', [
+                    'body' => $body
+                ]);
+                continue;
+            }
             $currentLinkProcessed = $linksToProcess[$index];
 
             $pageTitle = $xpathParser->evaluate(XPaths::TITLE);
             $authors = $xpathParser->evaluate(XPaths::AUTHORS);
 
+            if (!$pageTitle->item(0)) {
+                Log::error('Could not parse title', [
+                    'link' => $currentLinkProcessed
+                ]);
+                $extractedData[$currentLinkProcessed] = [];
+                continue;
+            }
+
             $title = $pageTitle->item(0)->getAttribute('content');
             $authorList = [];
+
             foreach ($authors as $author) {
+                if (!isset($author->nodeValue)) {
+                    Log::error('Could not parse author', [
+                        'link' => $currentLinkProcessed
+                    ]);
+                    $extractedData[$currentLinkProcessed] = [];
+                    continue;
+                }
                 $authorList[] = $author->nodeValue;
             }
 
@@ -86,8 +108,12 @@ class ParserService
         return trim($normalisedUrl);
     }
 
-    private function loadDOMXPath($body): DOMXPath
+    private function loadDOMXPath($body): ?DOMXPath
     {
+        if (empty($body) || !is_string($body)) {
+            return null;
+        }
+
         $doc = new DOMDocument();
         @$doc->loadHTML($body, LIBXML_NOERROR);
         return new DOMXPath($doc);
@@ -95,6 +121,6 @@ class ParserService
 
     private function cleanUnicodeAndTrimString(string $string): string
     {
-        return trim(preg_replace('/\p{C}+/u', '', subject: $string));
+        return trim(transliterator_transliterate('Any-Latin; Latin-ASCII;', $string));
     }
 }

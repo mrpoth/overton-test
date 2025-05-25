@@ -12,7 +12,12 @@ class ParserController extends Controller
     public function index(ParserService $parserService): array
     {
 
-        return $parserService->extractTitleAndAuthors();
-
+        $pages = [
+            'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest',
+            'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=2',
+            'https://www.gov.uk/search/policy-papers-and-consultations?content_store_document_type%5B%5D=policy_papers&order=updated-newest&page=3'
+        ];
+        $links = $parserService->parseLinks($pages);
+        return $parserService->extractTitleAndAuthors($links);
     }
 }
