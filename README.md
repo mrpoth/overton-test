@@ -1,61 +1,33 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Tech test for Overton
+The purpose of this repo is to cover the three tasks set out by the [Overton PHP tech test](https://github.com/overtonpolicy/Overton-PHP-code-test).
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+To set up this repo, run the following commands after cloning the repo in your local install. From the main directory:
 
-## About Laravel
+```
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install && npm run build
+composer run dev
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+After that, you can either visit your [Overton PHP tech test](http://localhost:8000/) or run the command ``php artisan parser:links``
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Below follow the requirements for Step 3, a rudimentary design:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+In its most basic, the requirements can be filled mostly if not fully within Laravel's own ecosystem, specifically its queueing system.
 
-## Learning Laravel
+Using custom jobs and an interface, you could set up all of the above requirements such as delaying calls for X number of seconds, as well as keeping track of how many times each IP has sent a request.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+The cache system could also be utilised in the event of a 429 response code, so that you could keep track of which sites should be left alone for the moment with a timestamp.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+This would be a good candidate for job batching as well. Even though Laravel does have some first party-tooling to monitor all these, such as Horizon, I've found that they are not often enough to debug issues, so additional logging would be required.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+So, in essence, I would:
 
-## Laravel Sponsors
+Create an interface (DomainParserRequirementsInterface) with a bunch of methods that would define things like delays, etc, then create classe that would implement those.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Then, some sort of ProxyManager class that would keep track of which proxies to use for which domain (if that's the desired behaviour) or a randomised along with a tracker so that all are utilised evenly.
 
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+After that, I'd set up jobs that would take each batch of new pages and pass them down to each domain handler to deal with. 
